@@ -257,7 +257,7 @@ function drawPhotoInto(ctx, img, x, y, w, h, zoom, panX, panY, faceY, faceAt) {
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-function drawPanel(ctx, rect, photo, grade, sliders) {
+function drawPanel(ctx, rect, photo, grade, sliders, tint) {
   const { x, y, w, h } = rect;
   // v4: the photo fills the WHOLE panel. The caption lives in a compact
   // chip at a panel corner (drawChip, second pass) — not in a strip below
@@ -287,6 +287,22 @@ function drawPanel(ctx, rect, photo, grade, sliders) {
     ctx.fillRect(x, y, w, photoH);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+    // v7: per-panel counterweight tint — when tint is set, a magenta
+    // wash (clear at the top, 0.20 at the bottom, overlay blend, alpha
+    // scaled by grade strength s) so the grade varies panel to panel
+    // instead of reading as one flat golden-orange. Golden-hour stays
+    // dominant: the wash is a counterweight, not a second grade.
+    if (tint) {
+      const tgrad = ctx.createLinearGradient(x, y, x, y + h);
+      tgrad.addColorStop(0, 'rgba(255,46,136,0)');
+      tgrad.addColorStop(1, 'rgba(255,46,136,0.20)');
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = s;
+      ctx.fillStyle = tgrad;
+      ctx.fillRect(x, y, w, photoH);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
   } else {
     const grad = ctx.createLinearGradient(x, y, x, y + photoH);
     grad.addColorStop(0, '#3b1d4e');
@@ -448,13 +464,14 @@ function drawChromeTitle(ctx, text, cx, baselineY, maxW, startPx, style, glow, t
   ctx.lineJoin = 'round';
   // Stretch with letter-spacing to the target width (r1's title has
   // wide tracking): a tall title would swallow the bottom row, so the
-  // span comes from tracking, not height. Capped at 0.12em so the
-  // letters never look disconnected. measureText accounts for the
+  // span comes from tracking, not height. Capped at 0.08em (v7: the
+  // old 0.12em cap read as wide, disconnected kerning) so the letters
+  // never look disconnected. measureText accounts for the
   // spacing in Chrome, so the re-measure below is the real width.
   let spacing = 0;
   if (targetW) {
     const w0 = ctx.measureText(text).width;
-    spacing = Math.max(0, Math.min(px * 0.12, (targetW - w0) / Math.max(1, text.length - 1)));
+    spacing = Math.max(0, Math.min(px * 0.08, (targetW - w0) / Math.max(1, text.length - 1)));
     try { ctx.letterSpacing = `${spacing}px`; } catch (e) { /* older canvas */ }
   }
   const tm = ctx.measureText(text);
@@ -633,7 +650,7 @@ export function drawCover(canvas, state) {
   // Full-width title (v5): sized to SPAN the poster like the leaders
   // (~70%+ of the width; ours spanned ~42–50%). Width-driven: start at
   // 0.18H and shrink to fit 0.72W, then stretch with letter-spacing to
-  // ~0.78W (inside drawChromeTitle, capped at 0.12em) — a tall title
+  // ~0.76W (inside drawChromeTitle, capped at 0.08em) — a tall title
   // would swallow the bottom row, so the width comes from tracking,
   // not height. The title sits ON the middle of the collage — its ink
   // top just above the seam between the rows (r1: "a huge central
@@ -652,11 +669,11 @@ export function drawCover(canvas, state) {
   const titleBaselineY = titleInkTop + titleAsc;
 
   const rects = panelRects(state);
-  // Panel tilt (v4): the hero stays straight as the anchor; the rest
-  // alternate ±2.4–3.2° so the collage reads as angled panels butting
+  // Panel tilt (v7): the hero stays straight as the anchor; the rest
+  // alternate ±3.2–4.2° so the collage reads as angled panels butting
   // together, not a flat grid. Render-time only — the layout rects are
   // unchanged (the editor's hit-testing still uses them).
-  const tilts = rects.map((r, i) => (r.hero ? 0 : ((i % 2 ? -1 : 1) * (2.4 + (i % 3) * 0.4)) * Math.PI / 180));
+  const tilts = rects.map((r, i) => (r.hero ? 0 : ((i % 2 ? -1 : 1) * (3.2 + (i % 3) * 0.5)) * Math.PI / 180));
   const panelMetas = rects.map((rect, i) => {
     const slot = state.panels[i] || {};
     const photo = slot.photoIndex != null ? state.photos[slot.photoIndex] : null;
@@ -680,7 +697,7 @@ export function drawCover(canvas, state) {
     ctx.translate(rect.x + rect.w / 2, rect.y + rect.h / 2);
     ctx.rotate(tilts[i]);
     ctx.translate(-(rect.x + rect.w / 2), -(rect.y + rect.h / 2));
-    drawPanel(ctx, rect, panelMetas[i].photo, grade, sliders);
+    drawPanel(ctx, rect, panelMetas[i].photo, grade, sliders, i % 2 === 1 && !rect.hero);
     ctx.restore();
   });
   ctx.restore();
@@ -724,19 +741,20 @@ export function drawCover(canvas, state) {
 
   // Chrome title, bursting OVER the middle of the collage (v5): the ink
   // top sits at the vertical middle of the panels area, straddling the
-  // seam between the rows, and the title spans ~78% of the width. (v4
+  // seam between the rows, and the title spans ~76% of the width. (v4
   // sat flush at the panels' bottom; the judge read that as "sitting
   // under the grid".) The baseline was measured up front, and the
   // caption chips were already placed clear of this band.
   const titleDrawn = drawChromeTitle(ctx, title, W / 2, titleBaselineY, W * 0.72,
-    titlePx, state.titleStyle || 'chrome', sliders.glow || 0, W * 0.78);
+    titlePx, state.titleStyle || 'chrome', sliders.glow || 0, W * 0.76);
   const titlePxDrawn = titleDrawn.px;
 
-  // Neon script subtitle overlapping the title's bottom edge (r1 style:
-  // "one last summer" sits ON the bottom of PALM FEVER). It paints over
-  // the centre-bottom panel — a scene by construction in every key-art
+  // Neon script subtitle sitting BELOW the headline with a clear gap
+  // (v7: the old overlap — 0.10em above the title's bottom edge — read
+  // as the script crowding the headline). It paints over the
+  // centre-bottom panel — a scene by construction in every key-art
   // preset, never a character — so it can never cover a face.
-  const subY = titleBaselineY + titleDrawn.desc - titlePxDrawn * 0.10;
+  const subY = titleBaselineY + titleDrawn.desc + titlePxDrawn * 0.14;
   if (c.subtitle) {
     const subPx = Math.round(titlePxDrawn * 0.27);
     ctx.font = `${subPx}px Pacifico, cursive`;

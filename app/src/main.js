@@ -15,6 +15,13 @@ const SAMPLES = [
   { file: 'scene-car.webp', name: 'Getaway Car', role: '', place: 'PARKING LOT 6', sub: '6:03 PM — GETAWAY READY' },
   { file: 'scene-skyline.webp', name: 'Skyline', role: '', place: 'SKYLINE ROW', sub: '9:03 PM — CITY NEVER SLEEPS' },
   { file: 'scene-rooftop.webp', name: 'Rooftop Bar', role: '', place: 'ROOFTOP BAR', sub: '9:03 PM — GOLDEN HOUR' },
+  // v7: two new cast portraits (Khase picked the closeup). The Local is a
+  // portrait closeup (face 0.42) — safe in any panel, the face-aware crop
+  // has vertical slack. The Crew (trio, faces 0.25) is library-only: its
+  // high faces fight the top-left caption chips in top-row panels and
+  // would land under the script subtitle in the centre-bottom panel.
+  { file: 'people-closeup.webp', name: 'The Local', role: 'THE LOCAL', place: 'OCEAN DRIVE', sub: '8:12 PM — NEON HOUR', face: 0.42, zoom: 90 },
+  { file: 'people-trio.webp', name: 'The Crew', role: 'THE CREW', place: 'OCEAN DRIVE', sub: '8:12 PM — GOLDEN HOUR', face: 0.25, zoom: 90 },
 ];
 
 const TITLES = ['GOLDEN SHORE', 'NIGHT SHIFT', 'VICE HEAT', 'GETAWAY', 'LAST LIGHT BAY', 'PALM ROW', 'TROPIC BAY', 'SUNSET DOCK'];
@@ -30,24 +37,24 @@ const TAGLINES = ['EVERY SUNSET HAS A PRICE', 'ONE COAST · NO RULES · COMING S
 const PRESETS = {
   A: { size: 'landscape', layout: 'key-art', grade: 'golden-hour', titleStyle: 'chrome',
     captions: { title: 'GOLDEN SHORE', subtitle: 'where the sun never sets', tagline: 'EVERY SUNSET HAS A PRICE',
-      ribbon: 'FOUR FRIENDS · ONE SHORE · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
-      volume: 'VOL. 06', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER' },
-    panels: [2, 1, 3, 4, 8, 0] },
+      ribbon: 'FIVE FRIENDS · ONE SHORE · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 06', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER, THE LOCAL' },
+    panels: [2, 1, 3, 9, 8, 0] },
   B: { size: 'landscape', layout: 'key-art', grade: 'neon-night', titleStyle: 'chrome',
     captions: { title: 'NIGHT SHIFT', subtitle: 'one shift till dawn', tagline: 'THE CITY NEVER SLEEPS',
-      ribbon: 'THREE FRIENDS · ONE NIGHT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
-      volume: 'VOL. 07', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE FIXER, THE QUEEN, THE ANGLER' },
-    panels: [1, 2, 3, 4, 8, 0] },
+      ribbon: 'FIVE FRIENDS · ONE NIGHT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 07', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER, THE LOCAL' },
+    panels: [1, 2, 3, 9, 8, 0] },
   C: { size: 'portrait', layout: 'key-art', grade: 'golden-hour', titleStyle: 'chrome',
     captions: { title: 'VICE HEAT', subtitle: 'chasing the last light', tagline: 'DRIVE FAST · SHINE BRIGHT',
-      ribbon: 'FOUR FRIENDS · ONE HEAT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
-      volume: 'VOL. 08', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE ANGLER, THE QUEEN, THE DRIVER' },
-    panels: [1, 3, 0, 5, 8, 4] },
+      ribbon: 'FIVE FRIENDS · ONE HEAT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 08', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE ANGLER, THE DRIVER, THE FIXER, THE LOCAL' },
+    panels: [1, 3, 0, 9, 8, 2] },
   D: { size: 'square', layout: 'key-art', grade: 'neon-night', titleStyle: 'chrome',
     captions: { title: 'GETAWAY', subtitle: 'one last job before dawn', tagline: 'ONE COAST · NO RULES · COMING SOON',
       ribbon: 'FIVE FRIENDS · ONE GETAWAY', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
-      volume: 'VOL. 09', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER' },
-    panels: [1, 6, 2, 4, 8, 3] },
+      volume: 'VOL. 09', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER, THE LOCAL' },
+    panels: [1, 9, 2, 0, 8, 3] },
 };
 
 const $ = (id) => document.getElementById(id);
