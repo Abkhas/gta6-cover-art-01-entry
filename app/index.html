@@ -17,6 +17,7 @@
   <div class="top-actions">
     <button id="undoBtn" type="button" title="Undo">Undo</button>
     <button id="surpriseBtn" type="button" title="Random layout, grade and captions">Surprise me</button>
+    <button id="exportAllBtn" type="button" title="Export the current cover in all 3 sizes">Export all 3 sizes</button>
     <button id="exportBtn" class="primary" type="button">Export PNG</button>
   </div>
 </header>
@@ -55,6 +56,10 @@
       <div id="layoutGrid" class="layout-grid"></div>
     </section>
     <section>
+      <h2>Look &amp; Title</h2>
+      <div id="titleStyleBtns" class="chips"></div>
+    </section>
+    <section>
       <h2>Grade</h2>
       <div id="gradeChips" class="chips"></div>
       <div class="sliders">
@@ -64,18 +69,28 @@
         <label>Grain <input id="slGrain" type="range" min="0" max="100" value="35"><span id="slGrainV">35</span></label>
         <label>Vignette <input id="slVignette" type="range" min="0" max="100" value="55"><span id="slVignetteV">55</span></label>
         <label>Halftone dots <input id="slHalftone" type="range" min="0" max="100" value="0"><span id="slHalftoneV">0</span></label>
+        <label>Glow <input id="slGlow" type="range" min="0" max="100" value="30"><span id="slGlowV">30</span></label>
       </div>
     </section>
     <section>
+      <h2>Export</h2>
+      <div class="export-list">
+        <div class="export-row"><span>Square 1:1</span><b>1080 × 1080 PNG</b></div>
+        <div class="export-row"><span>Portrait 4:5</span><b>1080 × 1350 PNG</b></div>
+        <div class="export-row"><span>Wide 16:9</span><b>1920 × 1080 PNG</b></div>
+        <button id="exportAllBtn2" class="primary" type="button">Export all 3 sizes</button>
+      </div>
+    </section>
+    <section class="caption-section">
       <h2>Caption</h2>
       <div class="fields">
-        <label>Title <input id="fTitle" type="text" value="PALM HEIST" maxlength="24"></label>
-        <label>Subtitle (script) <input id="fSubtitle" type="text" value="a neon coast story" maxlength="40"></label>
+        <label>Title <input id="fTitle" type="text" value="GOLDEN SHORE" maxlength="24"></label>
+        <label>Subtitle (script) <input id="fSubtitle" type="text" value="where the sun never sets" maxlength="40"></label>
         <label>Tagline <input id="fTagline" type="text" value="EVERY SUNSET HAS A PRICE" maxlength="60"></label>
         <label>Badge <input id="fBadge" type="text" value="ORIGINAL COVER ART" maxlength="30"></label>
         <label>Volume <input id="fVolume" type="text" value="VOL. 06" maxlength="12"></label>
-        <label>Ribbon <input id="fRibbon" type="text" value="HOT SUMMER ’26" maxlength="24"></label>
-        <label>HUD word <input id="fHud" type="text" value="WANTED" maxlength="12"></label>
+        <label>Ribbon <input id="fRibbon" type="text" value="FOUR FRIENDS · ONE SHORE · NO WAY BACK" maxlength="48"></label>
+        <label>Cast <input id="fCast" type="text" value="THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER" maxlength="60"></label>
         <label>Stars <input id="fStars" type="number" min="0" max="5" value="5"></label>
         <label>Press quote <input id="fQuote" type="text" value="“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST" maxlength="80"></label>
       </div>
@@ -100,7 +115,7 @@
     </section>
     <section class="about">
       <h2>About</h2>
-      <p>Vice Coast Cover Studio turns your photos into a multi-panel Vice Coast poster: pick a layout, a sunset grade, write the caption, export a PNG for your feed. Fonts: Anton &amp; Pacifico, SIL Open Font License 1.1 (see app/fonts/OFL.txt). All sample photos were made with an image model — no real people, no game artwork.</p>
+      <p>Vice Coast Cover Studio turns your photos into a multi-panel Vice Coast poster: pick a layout, a sunset grade, write the caption, export a PNG for your feed. Fonts: Anton &amp; Pacifico, SIL Open Font License 1.1 (see app/fonts/OFL.txt). All 9 sample photos were made with an image model — no real people, no game artwork.</p>
     </section>
   </aside>
 </main>

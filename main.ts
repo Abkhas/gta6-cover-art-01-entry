@@ -1,7 +1,9 @@
-// Vice Coast Cover Studio — make.fun gta6-cover-art-01 entry program.
+// Vice Coast Cover Studio — make.fun gta6-cover-art-01 entry program (v2).
 // Node 22, standard library only. Copies the app and the screenshots from
 // beside this file into /output (or MAKEFUN_OUTPUT_DIR) and writes the
 // dossier the judge reads, using the vendored make.fun library.
+// v2: chrome-stripes title, new photoreal hero, 7-panel Harbor layout,
+// full poster furniture, three distinct covers in the screenshots.
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';

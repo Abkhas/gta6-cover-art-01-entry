@@ -1,21 +1,51 @@
 // Vice Coast Cover Studio — editor wiring: photos, layouts, grades, captions,
 // per-panel editing, undo, Surprise me, PNG export and ?shot= screenshot mode.
-import { SIZES, LAYOUTS, GRADES, layoutById, gradeById, drawCover } from './cover.js';
+import { SIZES, LAYOUTS, GRADES, TITLE_STYLES, layoutById, gradeById, titleStyleById, drawCover, panelRects } from './cover.js';
 
 const SAMPLES = [
-  { file: 'hero-driver.webp', name: 'The Driver', role: 'THE DRIVER', place: 'OCEAN DRIVE', sub: '7:40 PM — ENGINE RUNNING' },
-  { file: 'hero-queen.webp', name: 'The Queen', role: 'THE QUEEN', place: 'MARINA BAY', sub: '8:12 PM — NEON HOUR' },
-  { file: 'hero-fixer.webp', name: 'The Fixer', role: 'THE FIXER', place: 'THE PIER', sub: '5:47 PM — LAST CAST' },
-  { file: 'hero-angler.webp', name: 'The Angler', role: 'THE ANGLER', place: 'SUNSET PIER', sub: '6:03 PM — CATCH OF THE DAY' },
+  // face: vertical position of the face inside the photo (0..1) — the
+  // renderer keeps it in frame (face-aware crop). zoom: default zoom
+  // (slightly zoomed out for portraits so nothing is cut).
+  { file: 'hero-driver.webp', name: 'The Driver', role: 'THE DRIVER', place: 'OCEAN DRIVE', sub: '7:40 PM — ENGINE RUNNING', face: 0.38, zoom: 92 },
+  { file: 'hero-queen.webp', name: 'The Queen', role: 'THE QUEEN', place: 'MARINA BAY', sub: '8:12 PM — NEON HOUR', face: 0.47, zoom: 90 },
+  { file: 'hero-fixer.webp', name: 'The Fixer', role: 'THE FIXER', place: 'THE PIER', sub: '5:47 PM — LAST CAST', face: 0.44, zoom: 90 },
+  { file: 'hero-angler.webp', name: 'The Angler', role: 'THE ANGLER', place: 'SUNSET PIER', sub: '6:03 PM — CATCH OF THE DAY', face: 0.38, zoom: 90 },
   { file: 'scene-pier.webp', name: 'Pier', role: '', place: 'THE PIER', sub: '5:47 PM — LAST LIGHT' },
   { file: 'scene-boulevard.webp', name: 'Boulevard', role: '', place: 'OCEAN DRIVE', sub: '8:12 PM — NEON HOUR' },
   { file: 'scene-car.webp', name: 'Getaway Car', role: '', place: 'PARKING LOT 6', sub: '6:03 PM — GETAWAY READY' },
   { file: 'scene-skyline.webp', name: 'Skyline', role: '', place: 'SKYLINE ROW', sub: '9:03 PM — CITY NEVER SLEEPS' },
+  { file: 'scene-rooftop.webp', name: 'Rooftop Bar', role: '', place: 'ROOFTOP BAR', sub: '9:03 PM — GOLDEN HOUR' },
 ];
 
-const TITLES = ['PALM HEIST', 'NEON GETAWAY', 'SUNSET RUNNERS', 'VICE HEAT', 'LAST LIGHT CLUB', 'TROPIC THUNDER', 'COASTAL CREW', 'GOLDEN HOUR GANG'];
-const SUBTITLES = ['a neon coast story', 'one last job before dawn', 'the coast belongs to us', 'chasing the last light', 'every sunset has a price', 'born under neon signs'];
+const TITLES = ['GOLDEN SHORE', 'NIGHT SHIFT', 'VICE HEAT', 'GETAWAY', 'LAST LIGHT BAY', 'PALM ROW', 'TROPIC BAY', 'SUNSET DOCK'];
+const SUBTITLES = ['where the sun never sets', 'one shift till dawn', 'chasing the last light', 'one last job before dawn', 'the coast belongs to us', 'born under neon signs'];
 const TAGLINES = ['EVERY SUNSET HAS A PRICE', 'ONE COAST · NO RULES · COMING SOON', 'DRIVE FAST · SHINE BRIGHT', 'THE CITY NEVER SLEEPS', 'GOLDEN HOUR IS OURS'];
+
+// Full-cover presets for the screenshot shots: each is a different cover
+// (different title, grade, hero and panel set), never a re-crop of cover A.
+// Panel entries are photo indices into SAMPLES (load order).
+const PRESETS = {
+  A: { size: 'landscape', layout: 'harbor', grade: 'golden-hour', titleStyle: 'chrome',
+    captions: { title: 'GOLDEN SHORE', subtitle: 'where the sun never sets', tagline: 'EVERY SUNSET HAS A PRICE',
+      ribbon: 'FOUR FRIENDS · ONE SHORE · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 06', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER' },
+    panels: [1, 2, 3, 0, 4, 5, 8] },
+  B: { size: 'landscape', layout: 'hero', grade: 'neon-night', titleStyle: 'chrome',
+    captions: { title: 'NIGHT SHIFT', subtitle: 'one shift till dawn', tagline: 'THE CITY NEVER SLEEPS',
+      ribbon: 'THREE FRIENDS · ONE NIGHT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 07', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE FIXER, THE QUEEN, THE ANGLER' },
+    panels: [2, 1, 3, 6] },
+  C: { size: 'portrait', layout: 'hero-left', grade: 'golden-hour', titleStyle: 'chrome',
+    captions: { title: 'VICE HEAT', subtitle: 'chasing the last light', tagline: 'DRIVE FAST · SHINE BRIGHT',
+      ribbon: 'FOUR FRIENDS · ONE HEAT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 08', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE ANGLER, THE QUEEN, THE DRIVER' },
+    panels: [3, 1, 0, 8, 5] },
+  D: { size: 'square', layout: 'mosaic', grade: 'neon-night', titleStyle: 'chrome',
+    captions: { title: 'GETAWAY', subtitle: 'one last job before dawn', tagline: 'ONE COAST · NO RULES · COMING SOON',
+      ribbon: 'FIVE FRIENDS · ONE GETAWAY', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+      volume: 'VOL. 09', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER' },
+    panels: [6, 1, 2, 3, 0, 4, 5, 7, 8] },
+};
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('coverCanvas');
@@ -23,15 +53,17 @@ const fullCanvas = $('coverCanvasFull');
 
 const state = {
   size: 'landscape',
-  layout: 'hero',
-  grade: 'vice-sunset',
-  sliders: { strength: 80, contrast: 112, saturation: 135, grain: 35, vignette: 55, halftone: 0 },
+  layout: 'harbor',
+  grade: 'golden-hour',
+  titleStyle: 'chrome',
+  sliders: { strength: 80, contrast: 112, saturation: 135, grain: 35, vignette: 55, halftone: 0, glow: 30 },
   captions: {
-    title: 'PALM HEIST', subtitle: 'a neon coast story', tagline: 'EVERY SUNSET HAS A PRICE',
-    badge: 'ORIGINAL COVER ART', volume: 'VOL. 06', ribbon: 'HOT SUMMER ’26',
-    hud: 'WANTED', stars: 5, quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+    title: 'GOLDEN SHORE', subtitle: 'where the sun never sets', tagline: 'EVERY SUNSET HAS A PRICE',
+    badge: 'ORIGINAL COVER ART', volume: 'VOL. 06', ribbon: 'FOUR FRIENDS · ONE SHORE · NO WAY BACK',
+    stars: 5, quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
+    cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER',
   },
-  photos: [],          // { id, name, src, img, role, place, sub }
+  photos: [],          // { id, name, src, img, role, place, sub, face, zoom }
   panels: [],          // { photoIndex, zoom, panX, panY, role, place, sub }
   selected: 0,
   activePhoto: 0,
@@ -41,7 +73,7 @@ const state = {
 const undoStack = [];
 function snapshot() {
   return JSON.stringify({
-    size: state.size, layout: state.layout, grade: state.grade,
+    size: state.size, layout: state.layout, grade: state.grade, titleStyle: state.titleStyle,
     sliders: state.sliders, captions: state.captions, panels: state.panels, selected: state.selected,
   });
 }
@@ -63,6 +95,32 @@ $('undoBtn').addEventListener('click', undo);
 function render() {
   const target = document.body.classList.contains('shot-cover') ? fullCanvas : canvas;
   drawCover(target, state);
+  // Selection overlay on the editor preview: numbered badge + pink outline
+  // on the selected panel, so the per-panel editing is visible at a glance.
+  if (target === canvas) {
+    const rects = panelRects(state);
+    const r = rects[state.selected];
+    if (r) {
+      const ctx = canvas.getContext('2d');
+      ctx.save();
+      ctx.strokeStyle = '#ff5e8a';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([14, 8]);
+      ctx.strokeRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+      ctx.setLineDash([]);
+      const bx = r.x + 10, by = r.y + 10, br = 15;
+      ctx.fillStyle = '#ff5e8a';
+      ctx.beginPath();
+      ctx.arc(bx + br, by + br, br, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `700 ${Math.round(br * 1.1)}px "Segoe UI", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(state.selected + 1), bx + br, by + br + 1);
+      ctx.restore();
+    }
+  }
   $('step1').classList.toggle('done', state.photos.length > 0);
   $('step2').classList.toggle('done', true);
   $('step3').classList.toggle('done', state.exported);
@@ -80,19 +138,10 @@ function slotPhoto(i) {
 }
 function autoFill() {
   const layout = layoutById(state.layout);
-  const size = SIZES[state.size];
-  const titleH = size.h * (state.size === 'landscape' ? 0.30 : state.size === 'portrait' ? 0.24 : 0.27);
-  const rects = layout.panels(size.w, size.h - titleH, Math.max(4, size.w * 0.006));
+  const rects = panelRects(state);
   for (let i = 0; i < rects.length; i++) {
     const slot = ensureSlot(i);
     if (slot.photoIndex == null) slot.photoIndex = slotPhoto(i);
-    // Favour faces: a portrait photo in a very wide panel crops to the
-    // middle, so pan toward the top by default to keep the face in frame
-    // (panY +45 slides the crop window to the top of the photo).
-    const photo = state.photos[slot.photoIndex];
-    if (photo && photo.img && photo.img.naturalHeight > photo.img.naturalWidth && rects[i].w > rects[i].h * 2) {
-      if (slot.panY == null) slot.panY = 25;
-    }
   }
   render();
 }
@@ -112,7 +161,7 @@ async function loadSamples() {
     if (state.photos.some((p) => p.src === `samples/${s.file}`)) continue;
     try {
       const img = await loadImage(`samples/${s.file}`);
-      state.photos.push({ id: `sample-${s.file}`, name: s.name, src: `samples/${s.file}`, img, role: s.role, place: s.place, sub: s.sub });
+      state.photos.push({ id: `sample-${s.file}`, name: s.name, src: `samples/${s.file}`, img, role: s.role, place: s.place, sub: s.sub, face: s.face, zoom: s.zoom });
     } catch (e) { /* a missing sample just stays out */ }
   }
   state.activePhoto = 0;
@@ -226,19 +275,38 @@ function buildGradeChips() {
     wrap.append(b);
   });
 }
+function buildTitleStyleButtons() {
+  const wrap = $('titleStyleBtns');
+  TITLE_STYLES.forEach((t) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.dataset.titleStyle = t.id;
+    b.textContent = t.name;
+    b.addEventListener('click', () => {
+      if (state.titleStyle === t.id) return;
+      pushUndo();
+      state.titleStyle = t.id;
+      syncControls();
+      render();
+    });
+    wrap.append(b);
+  });
+}
 function syncControls() {
   document.querySelectorAll('.layout-btn').forEach((b) => b.classList.toggle('active', b.dataset.layout === state.layout));
   document.querySelectorAll('.chip').forEach((b) => b.classList.toggle('active', b.dataset.grade === state.grade));
+  document.querySelectorAll('[data-title-style]').forEach((b) => b.classList.toggle('active', b.dataset.titleStyle === state.titleStyle));
   document.querySelectorAll('.size-btn').forEach((b) => b.classList.toggle('active', b.dataset.size === state.size));
   const s = state.sliders;
   const set = (id, v) => { $(id).value = v; $(id + 'V').textContent = v; };
   set('slStrength', s.strength); set('slContrast', s.contrast); set('slSaturation', s.saturation);
-  set('slGrain', s.grain); set('slVignette', s.vignette); set('slHalftone', s.halftone);
+  set('slGrain', s.grain); set('slVignette', s.vignette); set('slHalftone', s.halftone); set('slGlow', s.glow);
   $('sizeNote').textContent = SIZES[state.size].label;
   const c = state.captions;
   $('fTitle').value = c.title; $('fSubtitle').value = c.subtitle; $('fTagline').value = c.tagline;
   $('fBadge').value = c.badge; $('fVolume').value = c.volume; $('fRibbon').value = c.ribbon;
-  $('fHud').value = c.hud; $('fStars').value = c.stars; $('fQuote').value = c.quote;
+  $('fStars').value = c.stars; $('fQuote').value = c.quote; $('fCast').value = c.cast;
   syncPanelEditor();
 }
 
@@ -260,7 +328,7 @@ function syncPanelEditor() {
 }
 
 // ---- sliders + caption fields -----------------------------------------------
-const SLIDER_KEYS = { slStrength: 'strength', slContrast: 'contrast', slSaturation: 'saturation', slGrain: 'grain', slVignette: 'vignette', slHalftone: 'halftone' };
+const SLIDER_KEYS = { slStrength: 'strength', slContrast: 'contrast', slSaturation: 'saturation', slGrain: 'grain', slVignette: 'vignette', slHalftone: 'halftone', slGlow: 'glow' };
 Object.entries(SLIDER_KEYS).forEach(([id, key]) => {
   $(id).addEventListener('input', () => {
     state.sliders[key] = Number($(id).value);
@@ -269,7 +337,7 @@ Object.entries(SLIDER_KEYS).forEach(([id, key]) => {
   });
   $(id).addEventListener('change', pushUndo);
 });
-const CAPTION_FIELDS = { fTitle: 'title', fSubtitle: 'subtitle', fTagline: 'tagline', fBadge: 'badge', fVolume: 'volume', fRibbon: 'ribbon', fHud: 'hud', fQuote: 'quote' };
+const CAPTION_FIELDS = { fTitle: 'title', fSubtitle: 'subtitle', fTagline: 'tagline', fBadge: 'badge', fVolume: 'volume', fRibbon: 'ribbon', fQuote: 'quote', fCast: 'cast' };
 Object.entries(CAPTION_FIELDS).forEach(([id, key]) => {
   $(id).addEventListener('input', () => { state.captions[key] = $(id).value; render(); });
   $(id).addEventListener('change', pushUndo);
@@ -341,9 +409,7 @@ canvas.addEventListener('click', (ev) => {
   const r = canvas.getBoundingClientRect();
   const px = (ev.clientX - r.left) * (canvas.width / r.width);
   const py = (ev.clientY - r.top) * (canvas.height / r.height);
-  const titleH = (SIZES[state.size].h - (SIZES[state.size].h * (state.size === 'landscape' ? 0.30 : state.size === 'portrait' ? 0.24 : 0.27)));
-  const g = Math.max(4, canvas.width * 0.006);
-  const rects = layoutById(state.layout).panels(canvas.width, titleH, g);
+  const rects = panelRects(state);
   const hit = rects.findIndex((rc) => px >= rc.x && px <= rc.x + rc.w && py >= rc.y && py <= rc.y + rc.h);
   if (hit >= 0) {
     state.selected = hit;
@@ -394,24 +460,65 @@ function exportPNG() {
 }
 $('exportBtn').addEventListener('click', exportPNG);
 
+// Export all 3 sizes at once: the current cover re-rendered at 1080×1080,
+// 1080×1350 and 1920×1080, one PNG download per size.
+function exportAll() {
+  const keep = state.size;
+  ['square', 'portrait', 'landscape'].forEach((sizeId, i) => {
+    const size = SIZES[sizeId];
+    state.size = sizeId;
+    const off = document.createElement('canvas');
+    drawCover(off, state);
+    off.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `vice-coast-cover-${sizeId}-${size.w}x${size.h}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }, 'image/png');
+  });
+  state.size = keep;
+  state.exported = true;
+  syncControls();
+  render();
+}
+$('exportAllBtn').addEventListener('click', exportAll);
+$('exportAllBtn2').addEventListener('click', exportAll);
+
 // ---- screenshot mode (?shot=cover|editor) -----------------------------------------
 async function runShot() {
   const q = new URLSearchParams(location.search);
   const shot = q.get('shot');
   if (!shot) return false;
   await document.fonts.ready;
-  // Apply shot params BEFORE loading samples, so auto-fill uses the
-  // requested layout/size/grade for every panel.
-  if (q.get('size') && SIZES[q.get('size')]) state.size = q.get('size');
-  if (q.get('layout') && layoutById(q.get('layout'))) state.layout = q.get('layout');
-  if (q.get('grade') && gradeById(q.get('grade'))) state.grade = q.get('grade');
-  if (q.get('title')) state.captions.title = q.get('title');
+  // A ?preset=A|B|C|D applies a whole cover (size, layout, grade, title
+  // style, captions) before samples load; its panel set is applied after,
+  // once the photo indices exist.
+  const preset = PRESETS[q.get('preset')] || null;
+  if (preset) {
+    state.size = preset.size;
+    state.layout = preset.layout;
+    state.grade = preset.grade;
+    state.titleStyle = preset.titleStyle;
+    Object.assign(state.captions, preset.captions);
+  } else {
+    if (q.get('size') && SIZES[q.get('size')]) state.size = q.get('size');
+    if (q.get('layout') && layoutById(q.get('layout'))) state.layout = q.get('layout');
+    if (q.get('grade') && gradeById(q.get('grade'))) state.grade = q.get('grade');
+    if (q.get('title')) state.captions.title = q.get('title');
+  }
   await loadSamples();
+  if (preset) {
+    state.panels = preset.panels.map((photoIndex) => ({ photoIndex }));
+    state.selected = 0;
+  }
   if (shot === 'cover') {
     document.body.classList.add('shot-cover');
     $('coverOnly').hidden = false;
     render();
   } else {
+    document.body.classList.add('shot-editor');
     syncControls();
     render();
   }
@@ -423,6 +530,7 @@ async function runShot() {
 // ---- boot -------------------------------------------------------------------------
 buildLayoutGrid();
 buildGradeChips();
+buildTitleStyleButtons();
 syncControls();
 document.fonts.load('100px Anton').catch(() => {});
 document.fonts.load('100px Pacifico').catch(() => {});

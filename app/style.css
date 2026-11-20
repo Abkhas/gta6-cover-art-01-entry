@@ -1,4 +1,16 @@
 /* Vice Coast Cover Studio — dark studio chrome, sunset accents. */
+@font-face {
+  font-family: 'Anton';
+  src: url('fonts/Anton-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Pacifico';
+  src: url('fonts/Pacifico-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
 :root {
   --bg: #120a18;
   --panel: #1d1226;
@@ -120,7 +132,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   width: 100%; height: 34px; border: 1px solid var(--line); border-radius: 4px;
   display: grid; gap: 1px; padding: 1px; background: #160b1e;
 }
-.layout-btn .mini i { background: linear-gradient(135deg, var(--accent2), var(--accent3)); display: block; border-radius: 1px; }
+.layout-btn .mini i { background: transparent; border: 1px solid rgba(245,234,217,.75); display: block; border-radius: 1px; }
 .layout-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .chip { font-size: 12px; padding: 6px 10px; }
@@ -131,7 +143,46 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .sliders label span { color: var(--text); float: right; }
 .fields label input, .fields label select { margin-top: 3px; }
 .panel-btns { display: flex; gap: 6px; }
+.export-list { display: flex; flex-direction: column; gap: 6px; }
+.export-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #160b1e; border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 10px; font-size: 12px; color: var(--muted);
+}
+.export-row b { color: var(--text); font-weight: 600; }
+.export-list .primary { width: 100%; margin-top: 2px; }
 .about p { color: var(--muted); font-size: 12px; }
+
+/* Screenshot mode for the editor shot: compact everything so the full
+   right column (layout, title style, grade, export, selected panel) fits
+   in a 1280x1024 frame with nothing half-clipped. The caption fields and
+   About sit below the fold in this mode by design — the app itself scrolls,
+   and every functional group is visible: photos, size, layout, title
+   style, grade sliders, the 3-size export list, and the selected panel. */
+body.shot-editor .topbar { padding: 6px 12px; }
+body.shot-editor .studio { gap: 8px; padding: 8px 12px 12px; }
+body.shot-editor .photos, body.shot-editor .controls { padding: 8px 10px; }
+body.shot-editor .controls section { margin-bottom: 8px; }
+body.shot-editor .photos h2, body.shot-editor .controls h2 { margin: 0 0 6px; font-size: 12px; }
+body.shot-editor .sliders label, body.shot-editor .fields label { margin-bottom: 4px; font-size: 11px; }
+body.shot-editor .sliders label input, body.shot-editor .fields label input,
+body.shot-editor .fields label select { padding: 4px 6px; }
+body.shot-editor .layout-btn { padding: 2px; font-size: 10px; }
+body.shot-editor .layout-btn .mini { height: 20px; }
+body.shot-editor .chip { padding: 3px 6px; font-size: 10px; }
+body.shot-editor .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+body.shot-editor .sliders label { margin-bottom: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
+body.shot-editor .sliders label input { flex: 1 1 60px; min-width: 60px; }
+body.shot-editor .sliders label span { font-size: 11px; }
+body.shot-editor .export-row { padding: 3px 10px; font-size: 11px; }
+body.shot-editor .export-list .primary { padding: 6px 10px; font-size: 12px; }
+body.shot-editor #panelSection .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+body.shot-editor #panelSection .fields label { margin-bottom: 0; }
+body.shot-editor #panelSection .panel-btns { grid-column: 1 / -1; }
+body.shot-editor .caption-section, body.shot-editor .about { display: none; }
+body.shot-editor .library, body.shot-editor .photos .hint { display: none; }
+body.shot-editor .preview-hint { display: none; }
+body.shot-editor #coverCanvas { max-height: calc(100vh - 190px); }
 
 /* Full-cover shot mode: only the canvas is shown. The [hidden] rule must win
    over .cover-only's display, or the black overlay hides the editor. */
