@@ -23,28 +23,31 @@ const TAGLINES = ['EVERY SUNSET HAS A PRICE', 'ONE COAST · NO RULES · COMING S
 
 // Full-cover presets for the screenshot shots: each is a different cover
 // (different title, grade, hero and panel set), never a re-crop of cover A.
-// Panel entries are photo indices into SAMPLES (load order).
+// Panel entries are photo indices into SAMPLES (load order). Key-art
+// presets: index 1 is the centre-top hero; index 4 (centre-bottom) must
+// be a SCENE — the script subtitle overlaps the title's bottom edge
+// right above it, and a scene has no face to cover.
 const PRESETS = {
-  A: { size: 'landscape', layout: 'harbor', grade: 'golden-hour', titleStyle: 'chrome',
+  A: { size: 'landscape', layout: 'key-art', grade: 'golden-hour', titleStyle: 'chrome',
     captions: { title: 'GOLDEN SHORE', subtitle: 'where the sun never sets', tagline: 'EVERY SUNSET HAS A PRICE',
       ribbon: 'FOUR FRIENDS · ONE SHORE · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
       volume: 'VOL. 06', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER' },
-    panels: [1, 2, 3, 0, 4, 5, 8] },
-  B: { size: 'landscape', layout: 'hero', grade: 'neon-night', titleStyle: 'chrome',
+    panels: [2, 1, 3, 4, 8, 0] },
+  B: { size: 'landscape', layout: 'key-art', grade: 'neon-night', titleStyle: 'chrome',
     captions: { title: 'NIGHT SHIFT', subtitle: 'one shift till dawn', tagline: 'THE CITY NEVER SLEEPS',
       ribbon: 'THREE FRIENDS · ONE NIGHT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
       volume: 'VOL. 07', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE FIXER, THE QUEEN, THE ANGLER' },
-    panels: [2, 1, 3, 6] },
-  C: { size: 'portrait', layout: 'hero-left', grade: 'golden-hour', titleStyle: 'chrome',
+    panels: [1, 2, 3, 4, 8, 0] },
+  C: { size: 'portrait', layout: 'key-art', grade: 'golden-hour', titleStyle: 'chrome',
     captions: { title: 'VICE HEAT', subtitle: 'chasing the last light', tagline: 'DRIVE FAST · SHINE BRIGHT',
       ribbon: 'FOUR FRIENDS · ONE HEAT · NO WAY BACK', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
       volume: 'VOL. 08', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE ANGLER, THE QUEEN, THE DRIVER' },
-    panels: [3, 1, 0, 8, 5] },
-  D: { size: 'square', layout: 'mosaic', grade: 'neon-night', titleStyle: 'chrome',
+    panels: [1, 3, 0, 5, 8, 4] },
+  D: { size: 'square', layout: 'key-art', grade: 'neon-night', titleStyle: 'chrome',
     captions: { title: 'GETAWAY', subtitle: 'one last job before dawn', tagline: 'ONE COAST · NO RULES · COMING SOON',
       ribbon: 'FIVE FRIENDS · ONE GETAWAY', quote: '“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST',
       volume: 'VOL. 09', badge: 'ORIGINAL COVER ART', stars: 5, cast: 'THE QUEEN, THE FIXER, THE ANGLER, THE DRIVER' },
-    panels: [6, 1, 2, 3, 0, 4, 5, 7, 8] },
+    panels: [1, 6, 2, 4, 8, 3] },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -53,7 +56,7 @@ const fullCanvas = $('coverCanvasFull');
 
 const state = {
   size: 'landscape',
-  layout: 'harbor',
+  layout: 'key-art',
   grade: 'golden-hour',
   titleStyle: 'chrome',
   sliders: { strength: 80, contrast: 112, saturation: 135, grain: 35, vignette: 55, halftone: 0, glow: 30 },

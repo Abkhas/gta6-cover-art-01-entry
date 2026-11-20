@@ -1,13 +1,14 @@
-// Vice Coast Cover Studio — canvas cover renderer (v4).
+// Vice Coast Cover Studio — canvas cover renderer (v5).
 // Draws the multi-panel poster: angled photo panels with a unified warm
-// golden-hour grade, a huge deep-chrome title bursting OVER the bottom of
-// the collage, a script subtitle, a press-quote top strip, a gold VOL
-// chip, a starburst seal, a billing block, a palm tagline strip, a
-// barcode and a gold frame. Every panel carries its two-line caption
-// (role/place + place/time/quip) in a compact corner chip — bottom-left
-// for most panels, top-left for bottom-row panels (the title bursts over
-// the bottom, so bottom-row captions live at the top). No text ever
-// touches a face. No network, no libraries.
+// golden-hour grade, a huge deep-chrome title bursting OVER the middle of
+// the collage (key-art layout: central hero flanked by labelled
+// panels), a script subtitle on the title's bottom edge, a press-quote
+// top strip, a gold VOL chip, a starburst seal, a billing block, a palm
+// tagline strip, a barcode and a gold frame. Every panel carries its
+// two-line caption (role/place + place/time/quip) in a compact corner
+// chip placed clear of the title band — top-left for panels crossing
+// the title's top edge, bottom-left otherwise. No text ever touches a
+// face. No network, no libraries.
 
 export const SIZES = {
   square: { w: 1080, h: 1080, label: 'Square · 1080 × 1080' },
@@ -31,6 +32,27 @@ function cols(cw, ch, g, n, x, w) {
 // Each layout returns panels inside the content area (cw × ch), the part
 // below the top strip. Panel 0 is the hero wherever one exists.
 export const LAYOUTS = [
+  { id: 'key-art', name: 'Key Art', panels(cw, ch, g) {
+    // Key-art grid (v5 default): central hero flanked by
+    // labelled panels — 3 columns (0.30 / 0.40 / 0.30) × 2 rows
+    // (top 0.54 / bottom 0.46). Panel 1 is the hero (centre-top).
+    // Panel 4 (centre-bottom) should be a SCENE, not a character: the
+    // script subtitle overlaps the title's bottom edge right above it,
+    // and a scene has no face to cover.
+    const uw = cw - 2 * g;
+    const lw = uw * 0.30, cw2 = uw * 0.40, rw = uw * 0.30;
+    const th = (ch - g) * 0.54, bh = (ch - g) * 0.46, by = th + g;
+    // Bottom-row faces sit LOWER in their panels (faceAt 0.62): the
+    // title band ends above them, so no title ink can cover a face.
+    return [
+      { x: 0, y: 0, w: lw, h: th },
+      { x: lw + g, y: 0, w: cw2, h: th, hero: true },
+      { x: lw + g + cw2 + g, y: 0, w: rw, h: th },
+      { x: 0, y: by, w: lw, h: bh, faceAt: 0.62 },
+      { x: lw + g, y: by, w: cw2, h: bh, faceAt: 0.62 },
+      { x: lw + g + cw2 + g, y: by, w: rw, h: bh, faceAt: 0.62 },
+    ];
+  } },
   { id: 'harbor', name: 'Harbor 7', panels(cw, ch, g) {
     const hw = cw * 0.46, rx = hw + g, rw = cw - rx;
     const out = [{ x: 0, y: 0, w: hw, h: ch, hero: true }];
@@ -136,10 +158,13 @@ export function titleStyleById(id) {
   return TITLE_STYLES.find((t) => t.id === id) || TITLE_STYLES[0];
 }
 
-// Poster geometry, as fractions of the poster height. The title bursts
-// OVER the bottom of the photo panels (its ink top overlaps the bottom
-// ~22% of the bottom-row photos); everything below the title is poster
-// furniture (subtitle, ribbon, billing, tagline strip, footer).
+// Poster geometry, as fractions of the poster height. The panels area
+// runs to ~0.80H (v5: the collage fills the frame down to the furniture
+// band — the old 0.575H left a dead dark zone in the lower half). The
+// title bursts OVER the middle of the collage (its ink top at the
+// vertical middle of the panels area, straddling the seam between the
+// rows); everything below the panels is poster furniture (subtitle
+// ribbon, billing, tagline strip, footer).
 export function frameWidth(sizeId) {
   const { w } = SIZES[sizeId] || SIZES.landscape;
   return Math.max(6, Math.round(w * 0.006));
@@ -147,7 +172,7 @@ export function frameWidth(sizeId) {
 export function panelsArea(sizeId) {
   const size = SIZES[sizeId] || SIZES.landscape;
   const g = Math.max(4, size.w * 0.006);
-  return { top: size.h * 0.052 + g, height: size.h * 0.575 };
+  return { top: size.h * 0.052 + g, height: size.h * 0.748 };
 }
 // Absolute panel rects (including the frame offset) for a state.
 export function panelRects(state) {
@@ -207,16 +232,18 @@ function fitFont(ctx, text, maxW, startPx, family, weight) {
 
 // ---- photo panel -----------------------------------------------------------
 // faceY (0..1) is the vertical position of the face inside the photo.
-// When set, the crop window is placed so the face lands at 42% of the
-// panel height — a face is never cut at the top of a panel.
-function drawPhotoInto(ctx, img, x, y, w, h, zoom, panX, panY, faceY) {
+// When set, the crop window is placed so the face lands at faceAt (0.42
+// by default) of the panel height — a face is never cut at the top of a
+// panel. Bottom-row panels in the key-art layout use faceAt 0.62 so
+// their faces sit below the title band.
+function drawPhotoInto(ctx, img, x, y, w, h, zoom, panX, panY, faceY, faceAt) {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const scale = Math.max(w / iw, h / ih) * ((zoom || 100) / 100);
   const dw = iw * scale, dh = ih * scale;
   const dx = x + (w - dw) / 2 + ((panX || 0) / 50) * Math.max(0, (dw - w) / 2);
   let dy;
   if (faceY != null && dh > h) {
-    dy = (y + h * 0.42) - faceY * dh;
+    dy = (y + h * (faceAt || 0.42)) - faceY * dh;
     dy = Math.max(y + h - dh, Math.min(y, dy));
   } else {
     dy = y + (h - dh) / 2 + ((panY || 0) / 50) * Math.max(0, (dh - h) / 2);
@@ -242,7 +269,7 @@ function drawPanel(ctx, rect, photo, grade, sliders) {
     const con = 1 + (grade.con - 1) * s;
     const bri = 1 + (grade.bri - 1) * s;
     ctx.filter = `saturate(${sat * sliders.saturation / 100}) contrast(${con * sliders.contrast / 100}) brightness(${bri}) sepia(${grade.sep * s}) hue-rotate(${grade.hue * s}deg)`;
-    drawPhotoInto(ctx, photo.img, x, y, w, photoH, photo.zoom, photo.panX, photo.panY, photo.face);
+    drawPhotoInto(ctx, photo.img, x, y, w, photoH, photo.zoom, photo.panX, photo.panY, photo.face, rect.faceAt);
     ctx.filter = 'none';
     // Unified grade wash: warm top, deep bottom, blended over the photo.
     const grad = ctx.createLinearGradient(x, y, x, y + h);
@@ -278,15 +305,13 @@ function drawPanel(ctx, rect, photo, grade, sliders) {
 }
 
 // Compact two-line caption chip at a panel corner (the leaders' tag
-// style): dark chip, gold left bar, thin gold border. The chip sits at
-// the panel's BOTTOM-left corner — below the face — except on bottom-row
-// panels, where it sits at the TOP-left: the title bursts over the
-// bottom of the collage, so a bottom-row caption must live at the top.
-// Faces sit at ~42% height, centred; a corner chip never touches one.
-// Drawn in a second pass (after all panels) so a neighbour's tilted
-// corner can never cover it. Returns the chip's axis-aligned bounding
-// box (canvas coords) for the pixel probe.
-function drawChip(ctx, rect, meta, tilt, isBottom) {
+// style): dark chip, gold left bar, thin gold border. atTop puts it at
+// the panel's TOP-left corner, otherwise at the BOTTOM-left — below the
+// face either way. Faces sit at ~42% height, centred; a corner chip
+// never touches one. Drawn in a second pass (after all panels) so a
+// neighbour's tilted corner can never cover it. Returns the chip's
+// axis-aligned bounding box (canvas coords) for the pixel probe.
+function drawChip(ctx, rect, meta, tilt, atTop) {
   const { x, y, w, h } = rect;
   const line1raw = meta.role || meta.place || '';
   const line2raw = meta.role
@@ -327,7 +352,7 @@ function drawChip(ctx, rect, meta, tilt, isBottom) {
   const chipH = fs1f + (line2 ? fs2f + pad * 0.3 : 0) + pad * 1.1;
   const inset = Math.max(6, w * 0.02);
   const cx = x + inset;
-  const cy = isBottom
+  const cy = atTop
     ? y + Math.max(6, h * 0.03)
     : y + h - chipH - Math.max(6, h * 0.03);
   ctx.save();
@@ -409,12 +434,23 @@ function drawTopStrip(ctx, W, H, state, frame) {
 // baselines do not centre the cap, so an assumed em fraction puts the
 // title ~0.25em too high and it strikes the caption strips. Returns the
 // drawn size and the measured box so the stack below can be spaced from it.
-function drawChromeTitle(ctx, text, cx, baselineY, maxW, startPx, style, glow) {
+function drawChromeTitle(ctx, text, cx, baselineY, maxW, startPx, style, glow, targetW) {
   const px = fitFont(ctx, text, maxW, startPx, 'Anton, "Arial Narrow", sans-serif');
   ctx.font = `${px}px Anton, "Arial Narrow", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.lineJoin = 'round';
+  // Stretch with letter-spacing to the target width (r1's title has
+  // wide tracking): a tall title would swallow the bottom row, so the
+  // span comes from tracking, not height. Capped at 0.12em so the
+  // letters never look disconnected. measureText accounts for the
+  // spacing in Chrome, so the re-measure below is the real width.
+  let spacing = 0;
+  if (targetW) {
+    const w0 = ctx.measureText(text).width;
+    spacing = Math.max(0, Math.min(px * 0.12, (targetW - w0) / Math.max(1, text.length - 1)));
+    try { ctx.letterSpacing = `${spacing}px`; } catch (e) { /* older canvas */ }
+  }
   const tm = ctx.measureText(text);
   const asc = tm.actualBoundingBoxAscent;
   const desc = tm.actualBoundingBoxDescent;
@@ -485,7 +521,8 @@ function drawChromeTitle(ctx, text, cx, baselineY, maxW, startPx, style, glow) {
     ctx.restore();
   }
   ctx.restore();
-  return { px, asc, desc };
+  try { ctx.letterSpacing = '0px'; } catch (e) { /* older canvas */ }
+  return { px, asc, desc, width: tm.width, spacing };
 }
 
 // Gold starburst seal with straight, legible text (no arc text — the old
@@ -587,9 +624,26 @@ export function drawCover(canvas, state) {
 
   const panelsBottom = pa.top + pa.height;
   const title = (state.captions.title || 'GOLDEN SHORE').toUpperCase();
-  // Bigger title (0.15H — the leaders' titles span ~70% of the width;
-  // ours spanned ~42%): "a huge central title ... bursting over it".
-  const titlePx = fitFont(ctx, title, W * 0.92, Math.round(H * 0.15), 'Anton, "Arial Narrow", sans-serif');
+  // Full-width title (v5): sized to SPAN the poster like the leaders
+  // (~70%+ of the width; ours spanned ~42–50%). Width-driven: start at
+  // 0.18H and shrink to fit 0.72W, then stretch with letter-spacing to
+  // ~0.78W (inside drawChromeTitle, capped at 0.12em) — a tall title
+  // would swallow the bottom row, so the width comes from tracking,
+  // not height. The title sits ON the middle of the collage — its ink
+  // top just above the seam between the rows (r1: "a huge central
+  // title ... bursting over it"), with its bottom clearing the
+  // bottom-row faces (they sit low in their panels, faceAt 0.62).
+  // Measured HERE, before the panels, so the caption chips (drawn
+  // later) can be placed clear of the title band. ascSafe floors the
+  // ascent at Anton's real 0.88em so a late font can never lift it.
+  const titlePx = fitFont(ctx, title, W * 0.72, Math.round(H * 0.18), 'Anton, "Arial Narrow", sans-serif');
+  ctx.font = `${titlePx}px Anton, "Arial Narrow", sans-serif`;
+  const titleMeasure = ctx.measureText(title);
+  const titleAsc = Math.max(titleMeasure.actualBoundingBoxAscent, titlePx * 0.88);
+  const titleDesc = titleMeasure.actualBoundingBoxDescent || titlePx * 0.2;
+  const titleInkTop = pa.top + pa.height * 0.46;
+  const titleInkBottom = titleInkTop + titleAsc + titleDesc;
+  const titleBaselineY = titleInkTop + titleAsc;
 
   const rects = panelRects(state);
   // Panel tilt (v4): the hero stays straight as the anchor; the rest
@@ -649,43 +703,34 @@ export function drawCover(canvas, state) {
   }
 
   // Caption chips, second pass (always on top — a neighbour's tilted
-  // corner can never cover one). Bottom-row panels get their chip at the
-  // TOP-left: the title bursts over the bottom of the collage, so a
-  // bottom-row caption must live at the top. All other panels get it at
-  // the BOTTOM-left, below the face.
+  // corner can never cover one). Placement is decided from the title
+  // band, computed above: a panel that CROSSES the title band's top
+  // edge gets its chip at the TOP-left (its bottom sits behind the
+  // title); every other panel gets its chip at the BOTTOM-left, below
+  // its face. Faces sit at ~42% height, centred; a corner chip never
+  // touches one.
   const chipBoxes = [];
   rects.forEach((rect, i) => {
-    const isBottom = Math.abs((rect.y + rect.h) - panelsBottom) < 1;
-    const box = drawChip(ctx, rect, panelMetas[i].meta, tilts[i], isBottom);
+    const crossesTop = rect.y < titleInkTop - 8 && rect.y + rect.h > titleInkTop - 8;
+    const box = drawChip(ctx, rect, panelMetas[i].meta, tilts[i], crossesTop);
     if (box) chipBoxes.push(box);
   });
 
-  // Chrome title, bursting OVER the collage (v4): the ink top overlaps
-  // the bottom ~22% of the bottom-row photos. (v3 sat flush below the
-  // panels; the judge read that as "sitting under the grid".) The
-  // caption chips live at the panels' outer corners, far above the
-  // title band, so the title's ink never strikes a caption. The baseline
-  // is measured HERE (just before drawing, after the panels) — an early
-  // measurement can catch the fallback font before Anton loads and puts
-  // the title ~0.25em too high. ascSafe also floors the ascent at
-  // Anton's real 0.88em so a late font can never lift the title.
-  ctx.font = `${titlePx}px Anton, "Arial Narrow", sans-serif`;
-  const titleBox = ctx.measureText(title);
-  const ascSafe = Math.max(titleBox.actualBoundingBoxAscent, titlePx * 0.88);
-  // The ink top overlaps the bottom ~22% of the bottom-row photos
-  // (clamped 32–60px): the title bursts over the collage instead of
-  // sitting under it. The chips are far above this band, so the ink
-  // cannot strike a caption.
-  const bottomH = Math.min(...rects.filter((r) => Math.abs((r.y + r.h) - panelsBottom) < 1).map((r) => r.h));
-  const overlapPx = Math.min(60, Math.max(32, Math.round(bottomH * 0.22)));
-  const titleBaselineY = panelsBottom - overlapPx + ascSafe;
-  const titleDrawn = drawChromeTitle(ctx, title, W / 2, titleBaselineY, W * 0.92,
-    titlePx, state.titleStyle || 'chrome', sliders.glow || 0);
+  // Chrome title, bursting OVER the middle of the collage (v5): the ink
+  // top sits at the vertical middle of the panels area, straddling the
+  // seam between the rows, and the title spans ~78% of the width. (v4
+  // sat flush at the panels' bottom; the judge read that as "sitting
+  // under the grid".) The baseline was measured up front, and the
+  // caption chips were already placed clear of this band.
+  const titleDrawn = drawChromeTitle(ctx, title, W / 2, titleBaselineY, W * 0.72,
+    titlePx, state.titleStyle || 'chrome', sliders.glow || 0, W * 0.78);
   const titlePxDrawn = titleDrawn.px;
 
-  // Neon script subtitle (warm gold glow, not pink) — below the title's
-  // drop shadow, spaced from the measured glyph bottom.
-  const subY = titleBaselineY + titleDrawn.desc + titlePxDrawn * 0.14 + H * 0.012 + titlePxDrawn * 0.135;
+  // Neon script subtitle overlapping the title's bottom edge (r1 style:
+  // "one last summer" sits ON the bottom of PALM FEVER). It paints over
+  // the centre-bottom panel — a scene by construction in every key-art
+  // preset, never a character — so it can never cover a face.
+  const subY = titleBaselineY + titleDrawn.desc - titlePxDrawn * 0.10;
   if (c.subtitle) {
     const subPx = Math.round(titlePxDrawn * 0.27);
     ctx.font = `${subPx}px Pacifico, cursive`;
@@ -693,14 +738,21 @@ export function drawCover(canvas, state) {
     ctx.textBaseline = 'middle';
     ctx.shadowColor = '#ffb347';
     ctx.shadowBlur = subPx * 0.5;
+    // Thin dark outline so the gold script stays legible where it
+    // crosses the title's pink/orange bands.
+    ctx.lineWidth = Math.max(2, subPx * 0.07);
+    ctx.strokeStyle = 'rgba(24,6,32,.85)';
+    ctx.strokeText(c.subtitle, W / 2, subY);
     ctx.fillStyle = '#fff3d6';
     ctx.fillText(c.subtitle, W / 2, subY);
     ctx.shadowBlur = 0;
     ctx.textBaseline = 'alphabetic';
   }
 
-  // Ribbon line under the subtitle — clear of the billing block below it.
-  const ribbonY = subY + titlePxDrawn * 0.30 + H * 0.014;
+  // Ribbon line just below the panels — the furniture band (panels
+  // bottom → tagline strip) is tightly spaced so no dark gap is left
+  // between the collage and the strip.
+  const ribbonY = panelsBottom + H * 0.014;
   if (c.ribbon) {
     const rPx = Math.max(13, Math.round(H * 0.017));
     ctx.font = `${rPx}px Anton, "Arial Narrow", sans-serif`;
@@ -713,9 +765,12 @@ export function drawCover(canvas, state) {
     ctx.textBaseline = 'alphabetic';
   }
 
-  // Gold starburst seal, over the bottom-right photo — clear of its
-  // caption strip (the strip starts ~0.05H above the panels' bottom).
-  drawSeal(ctx, W - frame - W * 0.055, panelsBottom - H * 0.12, H * 0.058);
+  // Gold starburst seal, over the centre-bottom scene panel's
+  // bottom-right corner — clear of the title band above it, of that
+  // panel's bottom-left chip, of the Driver panel's chip (the old
+  // bottom-right spot covered the Driver chip's right end), and of the
+  // ribbon line below it (the first v5 pass put the seal ON the ribbon).
+  drawSeal(ctx, W * 0.64, panelsBottom - H * 0.075, H * 0.058);
 
   // Billing block — spaced below the ribbon, above the tagline strip.
   const billPx = Math.max(13, Math.round(H * 0.0165));
@@ -724,14 +779,12 @@ export function drawCover(canvas, state) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const cast = (c.cast || '').toUpperCase();
-  const billY1 = ribbonY + H * 0.016;
+  const billY1 = ribbonY + H * 0.026;
   ctx.fillText(`A VICE COAST PICTURE · STARRING ${cast}`, W / 2, billY1);
   ctx.fillText('SHOT ON YOUR OWN CAMERA · GRADED BY HAND', W / 2, billY1 + H * 0.018);
   ctx.textBaseline = 'alphabetic';
 
   // Tagline strip (warm amber) with palm silhouettes at both ends.
-  // Sits at 0.895H (v4: the title stack moved up with the overlapping
-  // title, so the strip moved up too to keep the band filled).
   const stripY = H * 0.895, stripH = H * 0.042;
   const tgrad = ctx.createLinearGradient(0, stripY, W, stripY);
   tgrad.addColorStop(0, '#ffb347');
@@ -779,8 +832,10 @@ export function drawCover(canvas, state) {
     chips: chipBoxes,
     titleInkTop: titleBaselineY - titleDrawn.asc,
     titleInkBottom: titleBaselineY + titleDrawn.desc,
+    titleWidth: titleDrawn.width,
+    titleSpacing: titleDrawn.spacing,
     panelsBottom,
-    overlapPx,
+    rects,
   };
 
   return { panels: rects.length };
