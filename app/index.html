@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Coast Cover Studio — GTA-style cover art maker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">VC</span> VICE COAST <span class="brand-sub">COVER STUDIO</span></div>
+  <ol class="steps">
+    <li class="step" id="step1"><b>1</b> Add photos</li>
+    <li class="step" id="step2"><b>2</b> Pick size &amp; layout</li>
+    <li class="step" id="step3"><b>3</b> Export PNG</li>
+  </ol>
+  <div class="top-actions">
+    <button id="undoBtn" type="button" title="Undo">Undo</button>
+    <button id="surpriseBtn" type="button" title="Random layout, grade and captions">Surprise me</button>
+    <button id="exportBtn" class="primary" type="button">Export PNG</button>
+  </div>
+</header>
+
+<main class="studio">
+  <aside class="photos" aria-label="Photos">
+    <h2>Photos</h2>
+    <div class="photo-actions">
+      <label class="btn" for="fileInput">Add photos</label>
+      <input id="fileInput" type="file" accept="image/*" multiple hidden>
+      <button id="samplesBtn" type="button">Load samples</button>
+      <button id="autofillBtn" type="button">Auto-fill</button>
+    </div>
+    <div id="photoStrip" class="strip"></div>
+    <p class="hint">Your photos stay on your machine — nothing is uploaded. Click a photo, then click a panel in the preview to place it there.</p>
+    <div class="library">
+      <h3>Photo library</h3>
+      <div id="libraryGrid" class="lib-grid"></div>
+    </div>
+  </aside>
+
+  <section class="preview" aria-label="Live preview">
+    <div class="size-row" role="group" aria-label="Export size">
+      <button class="size-btn" data-size="square" type="button">1080 × 1080</button>
+      <button class="size-btn" data-size="portrait" type="button">1080 × 1350</button>
+      <button class="size-btn active" data-size="landscape" type="button">1920 × 1080</button>
+      <span id="sizeNote" class="size-note">Landscape · 1920 × 1080</span>
+    </div>
+    <div class="canvas-wrap"><canvas id="coverCanvas" width="1920" height="1080"></canvas></div>
+    <p class="preview-hint">Click a panel to edit it — photo, zoom, role label and place caption.</p>
+  </section>
+
+  <aside class="controls" aria-label="Controls">
+    <section>
+      <h2>Layout</h2>
+      <div id="layoutGrid" class="layout-grid"></div>
+    </section>
+    <section>
+      <h2>Grade</h2>
+      <div id="gradeChips" class="chips"></div>
+      <div class="sliders">
+        <label>Grade strength <input id="slStrength" type="range" min="0" max="100" value="80"><span id="slStrengthV">80</span></label>
+        <label>Contrast <input id="slContrast" type="range" min="70" max="140" value="112"><span id="slContrastV">112</span></label>
+        <label>Saturation <input id="slSaturation" type="range" min="70" max="180" value="135"><span id="slSaturationV">135</span></label>
+        <label>Grain <input id="slGrain" type="range" min="0" max="100" value="35"><span id="slGrainV">35</span></label>
+        <label>Vignette <input id="slVignette" type="range" min="0" max="100" value="55"><span id="slVignetteV">55</span></label>
+        <label>Halftone dots <input id="slHalftone" type="range" min="0" max="100" value="0"><span id="slHalftoneV">0</span></label>
+      </div>
+    </section>
+    <section>
+      <h2>Caption</h2>
+      <div class="fields">
+        <label>Title <input id="fTitle" type="text" value="PALM HEIST" maxlength="24"></label>
+        <label>Subtitle (script) <input id="fSubtitle" type="text" value="a neon coast story" maxlength="40"></label>
+        <label>Tagline <input id="fTagline" type="text" value="EVERY SUNSET HAS A PRICE" maxlength="60"></label>
+        <label>Badge <input id="fBadge" type="text" value="ORIGINAL COVER ART" maxlength="30"></label>
+        <label>Volume <input id="fVolume" type="text" value="VOL. 06" maxlength="12"></label>
+        <label>Ribbon <input id="fRibbon" type="text" value="HOT SUMMER ’26" maxlength="24"></label>
+        <label>HUD word <input id="fHud" type="text" value="WANTED" maxlength="12"></label>
+        <label>Stars <input id="fStars" type="number" min="0" max="5" value="5"></label>
+        <label>Press quote <input id="fQuote" type="text" value="“SUNSET HAS NEVER LOOKED THIS GUILTY” — THE PALM POST" maxlength="80"></label>
+      </div>
+    </section>
+    <section id="panelSection">
+      <h2>Selected panel</h2>
+      <div class="fields">
+        <label>Photo
+          <select id="pPhoto"></select>
+        </label>
+        <label>Zoom <input id="pZoom" type="range" min="100" max="220" value="100"><span id="pZoomV">100%</span></label>
+        <label>Pan X <input id="pPanX" type="range" min="-50" max="50" value="0"><span id="pPanXV">0</span></label>
+        <label>Pan Y <input id="pPanY" type="range" min="-50" max="50" value="0"><span id="pPanYV">0</span></label>
+        <label>Role label <input id="pRole" type="text" maxlength="20" placeholder="THE DRIVER"></label>
+        <label>Place <input id="pPlace" type="text" maxlength="24" placeholder="OCEAN DRIVE"></label>
+        <label>Sub-line <input id="pSub" type="text" maxlength="40" placeholder="7:40 PM — ENGINE RUNNING"></label>
+        <div class="panel-btns">
+          <button id="pSwapBtn" type="button">Swap with next</button>
+          <button id="pClearBtn" type="button">Clear label</button>
+        </div>
+      </div>
+    </section>
+    <section class="about">
+      <h2>About</h2>
+      <p>Vice Coast Cover Studio turns your photos into a multi-panel Vice Coast poster: pick a layout, a sunset grade, write the caption, export a PNG for your feed. Fonts: Anton &amp; Pacifico, SIL Open Font License 1.1 (see app/fonts/OFL.txt). All sample photos were made with an image model — no real people, no game artwork.</p>
+    </section>
+  </aside>
+</main>
+
+<div id="coverOnly" class="cover-only" hidden><canvas id="coverCanvasFull" width="1920" height="1080"></canvas></div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
