@@ -1,4 +1,4 @@
-// Vice Coast Cover Studio — canvas cover renderer (v5).
+// Vice Coast Cover Studio — canvas cover renderer (v6).
 // Draws the multi-panel poster: angled photo panels with a unified warm
 // golden-hour grade, a huge deep-chrome title bursting OVER the middle of
 // the collage (key-art layout: central hero flanked by labelled
@@ -110,10 +110,16 @@ export const LAYOUTS = [
       ...cols(cw, ch, g, 2, cx + chw + g, cw2),
     ];
   } },
-  { id: 'skyline', name: 'Skyline Strip', panels(cw, ch, g) {
-    const th = ch * 0.42, by = th + g, bh = ch - by;
-    return [...rows(cw, ch, g, 5, 0, th), { x: 0, y: by, w: cw, h: bh, hero: true }];
-  } },
+  // v6: Skyline Strip REMOVED. Its hero is the full-width BOTTOM panel,
+  // and the title band bursts over the middle of the collage — so the
+  // title sat directly across the hero's eyes (194px = 42% of the hero,
+  // finalist-test proof, dev/finalist-test/skyline-preview.jpg). Moving
+  // the band above the hero would put it across the top-row faces
+  // instead, and pushing the hero face below the band would put the
+  // seal on the face — no clean placement exists, so the layout is
+  // gone. layoutById falls back to Key Art for any stale 'skyline'
+  // state, and the layout picker is built from LAYOUTS, so it is
+  // gone from the editor too.
   { id: 'duo', name: 'Duo Split', panels(cw, ch, g) {
     const th = ch * 0.58, by = th + g, bh = ch - by;
     const w = (cw - g) / 2;

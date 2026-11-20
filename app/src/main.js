@@ -217,7 +217,12 @@ $('fileInput').addEventListener('change', async (ev) => {
     const src = URL.createObjectURL(f);
     try {
       const img = await loadImage(src);
-      state.photos.push({ id: `upload-${Date.now()}-${state.photos.length}`, name: f.name.replace(/\.[^.]+$/, ''), src, img, role: '', place: '', sub: '' });
+      // v6: uploaded photos get the default face position (0.42), so
+      // drawPhotoInto's faceAt protection applies to them too. Without
+      // it the title covered the bottom-row foreheads on user-photo
+      // exports (finalist test) — the face was never placed below the
+      // title band because faceY was null.
+      state.photos.push({ id: `upload-${Date.now()}-${state.photos.length}`, name: f.name.replace(/\.[^.]+$/, ''), src, img, role: '', place: '', sub: '', face: 0.42 });
     } catch (e) { /* unreadable file skipped */ }
   }
   ev.target.value = '';
