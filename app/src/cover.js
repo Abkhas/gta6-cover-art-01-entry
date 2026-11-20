@@ -1,10 +1,11 @@
-// Vice Coast Cover Studio — canvas cover renderer (v2).
+// Vice Coast Cover Studio — canvas cover renderer (v3).
 // Draws the multi-panel poster: per-panel photos with a unified warm
-// golden-hour grade, a chrome-stripes title overlapping the photos, a
+// golden-hour grade, a deep chrome-stripes title below the photos, a
 // script subtitle, a press-quote top strip, a gold VOL chip, a starburst
 // seal, a billing block, a palm tagline strip, a barcode and a gold frame.
-// Every panel carries a two-line caption (role/place + place/time/quip)
-// so each panel reads on its own. No network, no libraries.
+// Every panel carries its two-line caption (role/place + place/time/quip)
+// in a solid strip BELOW its photo — no text ever covers a person.
+// No network, no libraries.
 
 export const SIZES = {
   square: { w: 1080, h: 1080, label: 'Square · 1080 × 1080' },
@@ -133,8 +134,9 @@ export function titleStyleById(id) {
   return TITLE_STYLES.find((t) => t.id === id) || TITLE_STYLES[0];
 }
 
-// Poster geometry, as fractions of the poster height. The title overlaps
-// the bottom of the photo panels; everything below the title is poster
+// Poster geometry, as fractions of the poster height. The title sits
+// below the photo panels (it no longer overlaps them — the caption strips
+// live at the bottom of every panel); everything below the title is poster
 // furniture (subtitle, ribbon, billing, tagline strip, footer).
 export function frameWidth(sizeId) {
   const { w } = SIZES[sizeId] || SIZES.landscape;
@@ -220,11 +222,27 @@ function drawPhotoInto(ctx, img, x, y, w, h, zoom, panX, panY, faceY) {
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-function drawPanel(ctx, rect, photo, grade, sliders, panelMeta, lift = 0) {
+function drawPanel(ctx, rect, photo, grade, sliders, panelMeta) {
   const { x, y, w, h } = rect;
+  // Two-line caption (role/place + place · time — quip) lives in a solid
+  // strip BELOW the photo, never overlaid on it: no text ever touches a
+  // person's face or body. Panel = photo on top + caption bar underneath.
+  const meta = panelMeta || {};
+  const line1raw = meta.role || meta.place || '';
+  const line2raw = meta.role
+    ? [meta.place, meta.sub].filter(Boolean).join(' · ')
+    : (meta.sub || '');
+  const hasCaption = Boolean(line1raw || line2raw);
+  const pad = Math.max(8, w * 0.025);
+  const fs1 = Math.max(11, Math.round(Math.min(w * 0.045, h * 0.11, 34)));
+  const fs2 = Math.max(10, Math.round(fs1 * 0.8));
+  const capH = hasCaption
+    ? fs1 + (line2raw ? fs2 + pad * 0.3 : 0) + pad * 1.1
+    : 0;
+  const photoH = h - capH;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(x, y, w, h);
+  ctx.rect(x, y, w, photoH);
   ctx.clip();
   if (photo && photo.img) {
     const s = sliders.strength / 100;
@@ -232,7 +250,7 @@ function drawPanel(ctx, rect, photo, grade, sliders, panelMeta, lift = 0) {
     const con = 1 + (grade.con - 1) * s;
     const bri = 1 + (grade.bri - 1) * s;
     ctx.filter = `saturate(${sat * sliders.saturation / 100}) contrast(${con * sliders.contrast / 100}) brightness(${bri}) sepia(${grade.sep * s}) hue-rotate(${grade.hue * s}deg)`;
-    drawPhotoInto(ctx, photo.img, x, y, w, h, photo.zoom, photo.panX, photo.panY, photo.face);
+    drawPhotoInto(ctx, photo.img, x, y, w, photoH, photo.zoom, photo.panX, photo.panY, photo.face);
     ctx.filter = 'none';
     // Unified grade wash: warm top, deep bottom, blended over the photo.
     const grad = ctx.createLinearGradient(x, y, x, y + h);
@@ -241,22 +259,55 @@ function drawPanel(ctx, rect, photo, grade, sliders, panelMeta, lift = 0) {
     ctx.globalCompositeOperation = grade.blend;
     ctx.globalAlpha = grade.alpha * s;
     ctx.fillStyle = grad;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(x, y, w, photoH);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   } else {
-    const grad = ctx.createLinearGradient(x, y, x, y + h);
+    const grad = ctx.createLinearGradient(x, y, x, y + photoH);
     grad.addColorStop(0, '#3b1d4e');
     grad.addColorStop(1, '#120a18');
     ctx.fillStyle = grad;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(x, y, w, photoH);
     ctx.fillStyle = 'rgba(245,234,217,.65)';
     ctx.font = `600 ${Math.max(14, w * 0.05)}px "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('ADD A PHOTO', x + w / 2, y + h / 2);
+    ctx.fillText('ADD A PHOTO', x + w / 2, y + photoH / 2);
     ctx.textAlign = 'left';
   }
   ctx.restore();
+
+  // Caption strip below the photo: solid dark bar with a thin gold top
+  // rule, text left-aligned. Drawn before the border so the panel frame
+  // stays visible over the whole panel (photo + strip). Long lines are
+  // ellipsised to the panel width, never cut.
+  if (hasCaption) {
+    const stripY = y + photoH;
+    ctx.fillStyle = '#1d0c29';
+    ctx.fillRect(x, stripY, w, capH);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(x, stripY, w, Math.max(2, capH * 0.05));
+    const fitLine = (text, px, bold) => {
+      ctx.font = `${bold ? '700 ' : ''}${px}px "Segoe UI", sans-serif`;
+      const maxW = w - pad * 2.6;
+      if (ctx.measureText(text).width <= maxW) return text;
+      let t = text;
+      while (t.length > 1 && ctx.measureText(`${t}…`).width > maxW) t = t.slice(0, -1);
+      return `${t}…`;
+    };
+    const line1 = fitLine(line1raw, fs1, true);
+    const line2 = line2raw ? fitLine(line2raw, fs2, false) : '';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = `700 ${fs1}px "Segoe UI", sans-serif`;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillText(line1, x + pad * 0.9, stripY + pad * 0.55 + fs1 / 2);
+    if (line2) {
+      ctx.font = `${fs2}px "Segoe UI", sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.fillText(line2, x + pad * 0.9, stripY + pad * 0.55 + fs1 + pad * 0.3 + fs2 / 2);
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
 
   // Thin light border, dark outer line — the poster-panel look.
   ctx.strokeStyle = 'rgba(255,255,255,.9)';
@@ -265,51 +316,6 @@ function drawPanel(ctx, rect, photo, grade, sliders, panelMeta, lift = 0) {
   ctx.strokeStyle = 'rgba(0,0,0,.55)';
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
-
-  // Two-line caption on EVERY panel so each panel reads on its own:
-  // line 1 = role (or place), line 2 = place · time — quip.
-  // `lift` raises the caption box clear of the chrome title, which overlaps
-  // the bottom of the panels — a caption struck through by the title reads
-  // as a defect. Long lines are ellipsised to the panel width, never cut.
-  const meta = panelMeta || {};
-  const line1raw = meta.role || meta.place || '';
-  const line2raw = meta.role
-    ? [meta.place, meta.sub].filter(Boolean).join(' · ')
-    : (meta.sub || '');
-  if (!line1raw && !line2raw) return;
-  const pad = Math.max(8, w * 0.025);
-  const fs1 = Math.max(11, Math.round(Math.min(w * 0.045, h * 0.11, 34)));
-  const fs2 = Math.max(10, Math.round(fs1 * 0.8));
-  const fitLine = (text, px, bold) => {
-    ctx.font = `${bold ? '700 ' : ''}${px}px "Segoe UI", sans-serif`;
-    const maxW = w - pad * 2.6;
-    if (ctx.measureText(text).width <= maxW) return text;
-    let t = text;
-    while (t.length > 1 && ctx.measureText(`${t}…`).width > maxW) t = t.slice(0, -1);
-    return `${t}…`;
-  };
-  const line1 = fitLine(line1raw, fs1, true);
-  const line2 = line2raw ? fitLine(line2raw, fs2, false) : '';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.font = `700 ${fs1}px "Segoe UI", sans-serif`;
-  const w1 = ctx.measureText(line1).width;
-  ctx.font = `${fs2}px "Segoe UI", sans-serif`;
-  const w2 = line2 ? ctx.measureText(line2).width : 0;
-  const bw = Math.max(w1, w2) + pad * 1.8;
-  const bh = fs1 + (line2 ? fs2 + pad * 0.3 : 0) + pad * 1.1;
-  const bx = x + pad * 0.7, by = y + h - pad * 0.7 - bh - lift;
-  ctx.fillStyle = 'rgba(10,4,16,.85)';
-  ctx.fillRect(bx, by, bw, bh);
-  ctx.font = `700 ${fs1}px "Segoe UI", sans-serif`;
-  ctx.fillStyle = '#ffe9a8';
-  ctx.fillText(line1, bx + pad * 0.9, by + pad * 0.55 + fs1 / 2);
-  if (line2) {
-    ctx.font = `${fs2}px "Segoe UI", sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,.92)';
-    ctx.fillText(line2, bx + pad * 0.9, by + pad * 0.55 + fs1 + pad * 0.3 + fs2 / 2);
-  }
-  ctx.textBaseline = 'alphabetic';
 }
 
 // ---- poster furniture ------------------------------------------------------
@@ -346,12 +352,21 @@ function drawTopStrip(ctx, W, H, state, frame) {
 
 // Chrome-stripes title: horizontal sunset bands, thick dark outline,
 // drop shadow. Falls back to a warm gradient (smooth) or a neon outline.
-function drawChromeTitle(ctx, text, cx, cy, maxW, startPx, style, glow) {
+// Takes an ALPHABETIC baseline and places the glyphs from their MEASURED
+// bounding box (actualBoundingBoxAscent/Descent) — canvas 'middle'
+// baselines do not centre the cap, so an assumed em fraction puts the
+// title ~0.25em too high and it strikes the caption strips. Returns the
+// drawn size and the measured box so the stack below can be spaced from it.
+function drawChromeTitle(ctx, text, cx, baselineY, maxW, startPx, style, glow) {
   const px = fitFont(ctx, text, maxW, startPx, 'Anton, "Arial Narrow", sans-serif');
   ctx.font = `${px}px Anton, "Arial Narrow", sans-serif`;
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.textBaseline = 'alphabetic';
   ctx.lineJoin = 'round';
+  const tm = ctx.measureText(text);
+  const asc = tm.actualBoundingBoxAscent;
+  const desc = tm.actualBoundingBoxDescent;
+  const top = baselineY - asc, bottom = baselineY + desc;
   ctx.save();
   const glowAmt = (glow || 0) / 100;
   if (style === 'neon') {
@@ -359,51 +374,66 @@ function drawChromeTitle(ctx, text, cx, cy, maxW, startPx, style, glow) {
     ctx.shadowBlur = px * (0.18 + glowAmt * 0.35);
     ctx.strokeStyle = '#ff2e88';
     ctx.lineWidth = px * 0.06;
-    ctx.strokeText(text, cx, cy);
+    ctx.strokeText(text, cx, baselineY);
     ctx.fillStyle = '#ffe3f1';
-    ctx.fillText(text, cx, cy);
+    ctx.fillText(text, cx, baselineY);
   } else if (style === 'smooth') {
     ctx.shadowColor = 'rgba(0,0,0,.6)';
     ctx.shadowBlur = px * 0.06;
     ctx.shadowOffsetY = px * 0.04;
-    const grad = ctx.createLinearGradient(0, cy - px * 0.5, 0, cy + px * 0.5);
+    const grad = ctx.createLinearGradient(0, top, 0, bottom);
     grad.addColorStop(0, '#ffd166');
     grad.addColorStop(0.55, '#ff8c42');
     grad.addColorStop(1, '#e36414');
     ctx.strokeStyle = 'rgba(20,4,28,.95)';
     ctx.lineWidth = px * 0.12;
-    ctx.strokeText(text, cx, cy);
+    ctx.strokeText(text, cx, baselineY);
     ctx.fillStyle = grad;
-    ctx.fillText(text, cx, cy);
+    ctx.fillText(text, cx, baselineY);
   } else {
-    // chrome: hard sunset bands + sheen + heavy outline + shadow
-    ctx.shadowColor = 'rgba(0,0,0,.65)';
-    ctx.shadowBlur = px * (0.05 + glowAmt * 0.2);
-    ctx.shadowOffsetY = px * 0.045;
-    const grad = ctx.createLinearGradient(0, cy - px * 0.5, 0, cy + px * 0.5);
-    grad.addColorStop(0.00, '#fff7d6');
-    grad.addColorStop(0.22, '#ffe08a');
-    grad.addColorStop(0.38, '#ffb347');
-    grad.addColorStop(0.52, '#ff8c42');
-    grad.addColorStop(0.68, '#ff5e8a');
-    grad.addColorStop(0.85, '#c084fc');
-    grad.addColorStop(1.00, '#8b5cf6');
-    ctx.strokeStyle = '#1c0b28';
+    // chrome: HARD sunset bands (sharp edges, not a soft wash) + heavy
+    // dark outline + thin light bevel stroke + crisp top highlight +
+    // strong drop shadow. The bands must still read as stripes at 512px
+    // wide, where a smooth gradient washes out into "plain gradient".
+    ctx.shadowColor = 'rgba(0,0,0,.7)';
+    ctx.shadowBlur = px * 0.08;
+    ctx.shadowOffsetY = px * 0.06;
+    const grad = ctx.createLinearGradient(0, top, 0, bottom);
+    const bands = [
+      [0.00, '#fffbe8'], [0.15, '#fffbe8'],
+      [0.15, '#ffe08a'], [0.31, '#ffe08a'],
+      [0.31, '#ffb347'], [0.47, '#ffb347'],
+      [0.47, '#ff7a1a'], [0.63, '#ff7a1a'],
+      [0.63, '#ff4d7e'], [0.79, '#ff4d7e'],
+      [0.79, '#c084fc'], [0.90, '#c084fc'],
+      [0.90, '#7c3aed'], [1.00, '#7c3aed'],
+    ];
+    for (const [s, col] of bands) grad.addColorStop(s, col);
+    ctx.strokeStyle = '#160a20';
     ctx.lineWidth = px * 0.16;
-    ctx.strokeText(text, cx, cy);
+    ctx.strokeText(text, cx, baselineY);
     ctx.fillStyle = grad;
-    ctx.fillText(text, cx, cy);
+    ctx.fillText(text, cx, baselineY);
+    // thin light bevel stroke on the glyph edge (dual outline)
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = 'rgba(255,247,214,.85)';
+    ctx.lineWidth = px * 0.028;
+    ctx.strokeText(text, cx, baselineY);
+    // crisp top highlight, painted only where the letters already are
+    // (source-atop), inside the glyph box so it never hazes the shadow
+    const tw = ctx.measureText(text).width;
     ctx.save();
-    ctx.globalAlpha = 0.32;
-    const sheen = ctx.createLinearGradient(0, cy - px * 0.5, 0, cy - px * 0.08);
-    sheen.addColorStop(0, '#ffffff');
-    sheen.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = sheen;
-    ctx.fillText(text, cx, cy - px * 0.02);
+    ctx.globalCompositeOperation = 'source-atop';
+    const hi = ctx.createLinearGradient(0, top, 0, top + (asc + desc) * 0.45);
+    hi.addColorStop(0, 'rgba(255,255,255,.5)');
+    hi.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hi;
+    ctx.fillRect(cx - tw / 2 - px * 0.1, top, tw + px * 0.2, (asc + desc) * 0.45);
     ctx.restore();
   }
   ctx.restore();
-  return px;
+  return { px, asc, desc };
 }
 
 // Gold starburst seal with straight, legible text (no arc text — the old
@@ -503,18 +533,9 @@ export function drawCover(canvas, state) {
 
   drawTopStrip(ctx, W, H, state, frame);
 
-  // Chrome title metrics FIRST: the title overlaps the bottom of the photo
-  // panels, so the caption boxes are lifted clear of its top edge before
-  // any panel is drawn. (fitFont is idempotent — drawChromeTitle re-fits
-  // with the same numbers and draws at the size computed here.)
   const panelsBottom = pa.top + pa.height;
   const title = (state.captions.title || 'GOLDEN SHORE').toUpperCase();
-  const titlePx = fitFont(ctx, title, W * 0.92, Math.round(H * 0.135), 'Anton, "Arial Narrow", sans-serif');
-  const titleY = panelsBottom + H * 0.015;
-  const titleTop = titleY - (titlePx * 0.72 * 1.12) / 2;
-  // Lift clears the glyphs plus their outline + drop shadow (about 0.1em
-  // above the cap) — a caption the title even grazes reads as a defect.
-  const captionLift = Math.max(0, panelsBottom - titleTop) + H * 0.028;
+  const titlePx = fitFont(ctx, title, W * 0.92, Math.round(H * 0.125), 'Anton, "Arial Narrow", sans-serif');
 
   const rects = panelRects(state);
   rects.forEach((rect, i) => {
@@ -527,7 +548,7 @@ export function drawCover(canvas, state) {
     };
     drawPanel(ctx, rect,
       photo ? { ...photo, zoom: slot.zoom ?? photo.zoom, panX: slot.panX, panY: slot.panY } : null,
-      grade, sliders, meta, captionLift);
+      grade, sliders, meta);
   });
 
   // Halftone + grain over the panels; vignette over the whole poster.
@@ -553,13 +574,23 @@ export function drawCover(canvas, state) {
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Chrome title, overlapping the bottom of the photo panels.
-  // (titleY / titlePx were measured above, before the panels were drawn.)
-  const titlePxDrawn = drawChromeTitle(ctx, title, W / 2, titleY, W * 0.92,
+  // Chrome title, sitting below the photo panels. The baseline is measured
+  // HERE (just before drawing, after the panels) — an early measurement
+  // can catch the fallback font before Anton loads and puts the title
+  // ~0.25em too high, striking the caption strips. ascSafe also floors
+  // the ascent at Anton's real 0.88em so a late font can never lift the
+  // title into the strips.
+  ctx.font = `${titlePx}px Anton, "Arial Narrow", sans-serif`;
+  const titleBox = ctx.measureText(title);
+  const ascSafe = Math.max(titleBox.actualBoundingBoxAscent, titlePx * 0.88);
+  const titleBaselineY = panelsBottom + ascSafe + titlePx * 0.08 + H * 0.006;
+  const titleDrawn = drawChromeTitle(ctx, title, W / 2, titleBaselineY, W * 0.92,
     titlePx, state.titleStyle || 'chrome', sliders.glow || 0);
+  const titlePxDrawn = titleDrawn.px;
 
-  // Neon script subtitle (warm gold glow, not pink).
-  const subY = titleY + titlePxDrawn * 0.52;
+  // Neon script subtitle (warm gold glow, not pink) — below the title's
+  // drop shadow, spaced from the measured glyph bottom.
+  const subY = titleBaselineY + titleDrawn.desc + titlePxDrawn * 0.14 + H * 0.012 + titlePxDrawn * 0.135;
   if (c.subtitle) {
     const subPx = Math.round(titlePxDrawn * 0.27);
     ctx.font = `${subPx}px Pacifico, cursive`;
@@ -587,8 +618,9 @@ export function drawCover(canvas, state) {
     ctx.textBaseline = 'alphabetic';
   }
 
-  // Gold starburst seal, overlapping the bottom-right of the panels.
-  drawSeal(ctx, W - frame - W * 0.055, panelsBottom - H * 0.01, H * 0.058);
+  // Gold starburst seal, over the bottom-right photo — clear of its
+  // caption strip (the strip starts ~0.05H above the panels' bottom).
+  drawSeal(ctx, W - frame - W * 0.055, panelsBottom - H * 0.12, H * 0.058);
 
   // Billing block — spaced below the ribbon, above the tagline strip.
   const billPx = Math.max(13, Math.round(H * 0.0165));
@@ -597,13 +629,13 @@ export function drawCover(canvas, state) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const cast = (c.cast || '').toUpperCase();
-  const billY1 = ribbonY + H * 0.026;
+  const billY1 = ribbonY + H * 0.016;
   ctx.fillText(`A VICE COAST PICTURE · STARRING ${cast}`, W / 2, billY1);
-  ctx.fillText('SHOT ON YOUR OWN CAMERA · GRADED BY HAND', W / 2, billY1 + H * 0.028);
+  ctx.fillText('SHOT ON YOUR OWN CAMERA · GRADED BY HAND', W / 2, billY1 + H * 0.018);
   ctx.textBaseline = 'alphabetic';
 
   // Tagline strip (warm amber) with palm silhouettes at both ends.
-  const stripY = H * 0.878, stripH = H * 0.042;
+  const stripY = H * 0.91, stripH = H * 0.042;
   const tgrad = ctx.createLinearGradient(0, stripY, W, stripY);
   tgrad.addColorStop(0, '#ffb347');
   tgrad.addColorStop(0.5, '#ff8c42');
@@ -622,7 +654,7 @@ export function drawCover(canvas, state) {
   ctx.textBaseline = 'alphabetic';
 
   // Footer: COMING SOON left, fine print centre, barcode right.
-  const footY = H * 0.958;
+  const footY = H * 0.965;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ff8c42';
@@ -634,7 +666,7 @@ export function drawCover(canvas, state) {
   ctx.fillText(`STARRING YOU · SHOT ON YOUR OWN CAMERA · VICE COAST COVER STUDIO · ${(c.volume || '').toUpperCase()}`,
     W / 2, footY);
   ctx.textBaseline = 'alphabetic';
-  drawBarcode(ctx, W - frame - W * 0.075, H * 0.925, W * 0.062, H * 0.055);
+  drawBarcode(ctx, W - frame - W * 0.075, H * 0.958, W * 0.062, H * 0.034);
 
   // Gold outer frame + inner dark line.
   ctx.strokeStyle = '#ffd166';

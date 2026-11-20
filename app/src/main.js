@@ -492,6 +492,16 @@ async function runShot() {
   const shot = q.get('shot');
   if (!shot) return false;
   await document.fonts.ready;
+  // Load the poster fonts explicitly and wait for them: an early render
+  // can measure the title with the fallback font (wrong ascent) and put
+  // the title ~0.25em too high, striking the caption strips.
+  try {
+    await Promise.all([
+      document.fonts.load('140px Anton'),
+      document.fonts.load('40px Pacifico'),
+    ]);
+    await document.fonts.ready;
+  } catch (e) { /* fall back to whatever loaded */ }
   // A ?preset=A|B|C|D applies a whole cover (size, layout, grade, title
   // style, captions) before samples load; its panel set is applied after,
   // once the photo indices exist.
